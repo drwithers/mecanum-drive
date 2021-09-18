@@ -3,21 +3,12 @@
 import RPi.GPIO as GPIO
 from time import sleep
 
-in1 = 17
-in2 = 27
-en = 18
 led = 14
 dr = True
 
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(in1,GPIO.OUT)
-GPIO.setup(in2,GPIO.OUT)
-GPIO.setup(en,GPIO.OUT)
+import defRobot
 GPIO.setup(led,GPIO.OUT)
-p=GPIO.PWM(en,1000)
-
-p.start(80)
-
 GPIO.output(led,GPIO.HIGH)
 
 while(1):
