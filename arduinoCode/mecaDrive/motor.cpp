@@ -19,9 +19,11 @@ void Motor::stop()
   digitalWrite(m_in2Pin, LOW);
 }
 
-void Motor::setSpeed(double power)
+void Motor::setSpeed(float power)
 {
-  int pwm = min(abs(power)*MAX_MOTOR_PWM,MAX_MOTOR_PWM);
+  int pwm = power*MAX_MOTOR_PWM;
+  pwm = abs(pwm);
+  pwm = min(pwm,MAX_MOTOR_PWM);
   if (0 <= power)
   {
     forward(pwm);
