@@ -1,6 +1,10 @@
-#include <IRremote.hpp>
+#include <Arduino.h>
 #include "motor.hpp"
 #include "vehicleConfig.hpp"
+
+//IR receiver based on MinimalReceiver example from IRremote.hpp library
+//https://github.com/Arduino-IRremote/Arduino-IRremote
+#include "TinyIRReceiver.hpp"
 
 const long IR_MONITOR_INTERVAL = 250; 
 
@@ -13,20 +17,17 @@ bool isDone = false;
 unsigned long previousMillis = 0;  
 float irMotorSpeed = 1.0;
 
-void setPwmFequencies()
-{
-  // Source http://domoticx.com/arduino-pwm-frequency-and-timers/
-  // set timer 1 divisor to  1024 for PWM frequency of    30.64 Hz
-  TCCR1B = TCCR1B & B11111000 | B00000101;
-  // set timer 2 divisor to  1024 for PWM frequency of    30.64 Hz
-  TCCR2B = TCCR2B & B11111000 | B00000111;
-}
+volatile struct TinyIRReceiverCallbackDataStruct sCallbackData;
+
+void setPwmFequencies();
 
 void setup()
 {
   setPwmFequencies();
-  Serial.begin(9600);
-  IrReceiver.begin(IR_RECEIVE_PIN, DISABLE_LED_FEEDBACK);
+  Serial.begin(115200);
+  Serial.println(F("START " __FILE__ " from " __DATE__));
+  initPCIInterruptForTinyReceiver();
+  Serial.println(F("Ready to receive NEC IR signals at pin " STR(IR_INPUT_PIN)));
   pinMode(STATUS_LED_PIN, OUTPUT);
 }
 
@@ -37,98 +38,92 @@ void loop()
   if (currentMillis - previousMillis >= IR_MONITOR_INTERVAL) {
     previousMillis = currentMillis;
 
-    uint16_t irCmd(0);
-    uint32_t irRaw(0);
-
-    if (IrReceiver.decode())
+    if (sCallbackData.justWritten)
     {
-      irCmd = IrReceiver.decodedIRData.command;
-      irRaw = IrReceiver.decodedIRData.decodedRawData;
-      Serial.println();
-      Serial.print("cmd: 0x"); Serial.println(irCmd,HEX);
-      Serial.print("raw: 0x"); Serial.println(irRaw,HEX);
-      IrReceiver.printIRResultShort(&Serial); // optional use new print version
-      IrReceiver.resume(); // Enable receiving of the next value
+      sCallbackData.justWritten = false;
+      Serial.print(F(" Command=0x"));
+      Serial.println(sCallbackData.Command, HEX);
       digitalWrite(STATUS_LED_PIN, HIGH);
     }
     else
     {
       digitalWrite(STATUS_LED_PIN, LOW);
+      sCallbackData.Command = 0x0;
     }
-
-    switch (irCmd)
+    
+    switch (sCallbackData.Command)
     {
       case 0x18:
       case 0x15:
         //Forward (NORTH)
-        frontRightMotor.setSpeed(irMotorSpeed);
-        frontLeftMotor.setSpeed(irMotorSpeed);
-        backRightMotor.setSpeed(irMotorSpeed);
-        backLeftMotor.setSpeed(irMotorSpeed);
+        frontRightMotor.setMotorSpeed(irMotorSpeed);
+        frontLeftMotor.setMotorSpeed(irMotorSpeed);
+        backRightMotor.setMotorSpeed(irMotorSpeed);
+        backLeftMotor.setMotorSpeed(irMotorSpeed);
         break;
       case 0x52:
       case 0x19:
         //Backward (SOUTH)
-        frontRightMotor.setSpeed(-irMotorSpeed);
-        frontLeftMotor.setSpeed(-irMotorSpeed);
-        backRightMotor.setSpeed(-irMotorSpeed);
-        backLeftMotor.setSpeed(-irMotorSpeed);
+        frontRightMotor.setMotorSpeed(-irMotorSpeed);
+        frontLeftMotor.setMotorSpeed(-irMotorSpeed);
+        backRightMotor.setMotorSpeed(-irMotorSpeed);
+        backLeftMotor.setMotorSpeed(-irMotorSpeed);
         break;
       case 0x16:
         //Turn Left
-        frontRightMotor.setSpeed(irMotorSpeed);
-        frontLeftMotor.setSpeed(-irMotorSpeed);
-        backRightMotor.setSpeed(irMotorSpeed);
-        backLeftMotor.setSpeed(-irMotorSpeed);
+        frontRightMotor.setMotorSpeed(irMotorSpeed);
+        frontLeftMotor.setMotorSpeed(-irMotorSpeed);
+        backRightMotor.setMotorSpeed(irMotorSpeed);
+        backLeftMotor.setMotorSpeed(-irMotorSpeed);
         break;
       case 0x0D:
         //Turn Right
-        frontRightMotor.setSpeed(-irMotorSpeed);
-        frontLeftMotor.setSpeed(irMotorSpeed);
-        backRightMotor.setSpeed(-irMotorSpeed);
-        backLeftMotor.setSpeed(irMotorSpeed);
+        frontRightMotor.setMotorSpeed(-irMotorSpeed);
+        frontLeftMotor.setMotorSpeed(irMotorSpeed);
+        backRightMotor.setMotorSpeed(-irMotorSpeed);
+        backLeftMotor.setMotorSpeed(irMotorSpeed);
         break;
       case 0x08:
         //WEST
-        frontRightMotor.setSpeed(irMotorSpeed);
-        backLeftMotor.setSpeed(irMotorSpeed);
-        frontLeftMotor.setSpeed(-irMotorSpeed);
-        backRightMotor.setSpeed(-irMotorSpeed);
+        frontRightMotor.setMotorSpeed(irMotorSpeed);
+        backLeftMotor.setMotorSpeed(irMotorSpeed);
+        frontLeftMotor.setMotorSpeed(-irMotorSpeed);
+        backRightMotor.setMotorSpeed(-irMotorSpeed);
         break;
       case 0x5A:
         //EAST
-        frontRightMotor.setSpeed(-irMotorSpeed);
-        backLeftMotor.setSpeed(-irMotorSpeed);
-        frontLeftMotor.setSpeed(irMotorSpeed);
-        backRightMotor.setSpeed(irMotorSpeed);
+        frontRightMotor.setMotorSpeed(-irMotorSpeed);
+        backLeftMotor.setMotorSpeed(-irMotorSpeed);
+        frontLeftMotor.setMotorSpeed(irMotorSpeed);
+        backRightMotor.setMotorSpeed(irMotorSpeed);
         break;
       case 0x5E:
         //NORTH-EAST
-        frontRightMotor.stop();
-        backLeftMotor.stop();
-        frontLeftMotor.setSpeed(irMotorSpeed);
-        backRightMotor.setSpeed(irMotorSpeed);
+        frontRightMotor.stopMotor();
+        backLeftMotor.stopMotor();
+        frontLeftMotor.setMotorSpeed(irMotorSpeed);
+        backRightMotor.setMotorSpeed(irMotorSpeed);
         break;
       case 0x0C:
         //NORTH-WEST
-        frontRightMotor.setSpeed(irMotorSpeed);
-        backLeftMotor.setSpeed(irMotorSpeed);
-        frontLeftMotor.stop();
-        backRightMotor.stop();
+        frontRightMotor.setMotorSpeed(irMotorSpeed);
+        backLeftMotor.setMotorSpeed(irMotorSpeed);
+        frontLeftMotor.stopMotor();
+        backRightMotor.stopMotor();
         break;
       case 0x42:
         //SOUTH-WEST
-        frontRightMotor.stop();
-        backLeftMotor.stop();
-        frontLeftMotor.setSpeed(-irMotorSpeed);
-        backRightMotor.setSpeed(-irMotorSpeed);
+        frontRightMotor.stopMotor();
+        backLeftMotor.stopMotor();
+        frontLeftMotor.setMotorSpeed(-irMotorSpeed);
+        backRightMotor.setMotorSpeed(-irMotorSpeed);
         break;
       case 0x4A:
         //SOUTH-EAST
-        frontRightMotor.setSpeed(-irMotorSpeed);
-        backLeftMotor.setSpeed(-irMotorSpeed);
-        frontLeftMotor.stop();
-        backRightMotor.stop();
+        frontRightMotor.setMotorSpeed(-irMotorSpeed);
+        backLeftMotor.setMotorSpeed(-irMotorSpeed);
+        frontLeftMotor.stopMotor();
+        backRightMotor.stopMotor();
         break;
         //TODO: This change of speed is causing something to break in the IR receiver.
       case 0x44:
@@ -141,11 +136,28 @@ void loop()
         irMotorSpeed = 1.0;
         break;
       default:
-        frontRightMotor.stop();
-        frontLeftMotor.stop();
-        backRightMotor.stop();
-        backLeftMotor.stop();
+        frontRightMotor.stopMotor();
+        frontLeftMotor.stopMotor();
+        backRightMotor.stopMotor();
+        backLeftMotor.stopMotor();
         break;
     }
   }
 } /* loop */
+
+void setPwmFequencies()
+{
+  // Source http://domoticx.com/arduino-pwm-frequency-and-timers/
+  // set timer 1 divisor to  1024 for PWM frequency of    30.64 Hz
+  TCCR1B = TCCR1B & B11111000 | B00000101;
+  // set timer 2 divisor to  1024 for PWM frequency of    30.64 Hz
+  TCCR2B = TCCR2B & B11111000 | B00000111;
+}
+
+void handleReceivedTinyIRData(uint16_t aAddress, uint8_t aCommand, bool isRepeat)
+{
+    sCallbackData.Address = aAddress;
+    sCallbackData.Command = aCommand;
+    sCallbackData.isRepeat = isRepeat;
+    sCallbackData.justWritten = true;
+}

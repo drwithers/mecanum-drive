@@ -12,14 +12,14 @@ Motor::Motor(int enPin, int in1Pin, int in2Pin)
   digitalWrite(m_in2Pin, LOW);
 }
 
-void Motor::stop()
+void Motor::stopMotor()
 {
   analogWrite(m_enPin, 0);
-  digitalWrite(m_in1Pin, LOW);
-  digitalWrite(m_in2Pin, LOW);
+  digitalWrite(m_in1Pin, HIGH);
+  digitalWrite(m_in2Pin, HIGH);
 }
 
-void Motor::setSpeed(float power)
+void Motor::setMotorSpeed(float power)
 {
   int pwm = power*MAX_MOTOR_PWM;
   pwm = abs(pwm);

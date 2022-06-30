@@ -8,8 +8,8 @@ class Motor {
   public:
     static const int MAX_MOTOR_PWM = 255;
     Motor(int enPin, int in1Pin, int in2Pin);
-    void stop();
-    void setSpeed(float power);
+    void stopMotor();
+    void setMotorSpeed(float power);
   
   private:
     void forward(int pwm);
