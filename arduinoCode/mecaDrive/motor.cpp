@@ -1,4 +1,3 @@
-// motor.cpp
 #include "motor.hpp"
 
 Motor::Motor(int enPin, int in1Pin, int in2Pin) 

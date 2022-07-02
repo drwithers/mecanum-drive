@@ -1,7 +1,7 @@
 #include <Arduino.h>
+#include "configFiles.hpp"
+#include "mecaDriveChassis.hpp"
 #include "motor.hpp"
-#include "vehicleConfig.hpp"
-
 //IR receiver based on MinimalReceiver example from IRremote.hpp library
 //https://github.com/Arduino-IRremote/Arduino-IRremote
 #include "TinyIRReceiver.hpp"
@@ -13,13 +13,16 @@ Motor frontLeftMotor(FRONT_EN_B_PIN, FRONT_IN_3_PIN, FRONT_IN_4_PIN);
 Motor backRightMotor(BACK_EN_B_PIN, BACK_IN_3_PIN, BACK_IN_4_PIN);
 Motor backLeftMotor(BACK_EN_A_PIN, BACK_IN_1_PIN, BACK_IN_2_PIN);
 
+MecaDriveChassis car(FRONT_EN_A_PIN, FRONT_IN_1_PIN, FRONT_IN_2_PIN,
+    FRONT_EN_B_PIN, FRONT_IN_3_PIN, FRONT_IN_4_PIN,
+    BACK_EN_B_PIN, BACK_IN_3_PIN, BACK_IN_4_PIN,
+    BACK_EN_A_PIN, BACK_IN_1_PIN, BACK_IN_2_PIN);
+
 bool isDone = false;
 unsigned long previousMillis = 0;  
 float irMotorSpeed = 1.0;
 
 volatile struct TinyIRReceiverCallbackDataStruct sCallbackData;
-
-void setPwmFequencies();
 
 void setup()
 {
@@ -56,76 +59,45 @@ void loop()
       case 0x18:
       case 0x15:
         //Forward (NORTH)
-        frontRightMotor.setMotorSpeed(irMotorSpeed);
-        frontLeftMotor.setMotorSpeed(irMotorSpeed);
-        backRightMotor.setMotorSpeed(irMotorSpeed);
-        backLeftMotor.setMotorSpeed(irMotorSpeed);
+        car.direct(PI/2, irMotorSpeed, 0);
         break;
       case 0x52:
       case 0x19:
         //Backward (SOUTH)
-        frontRightMotor.setMotorSpeed(-irMotorSpeed);
-        frontLeftMotor.setMotorSpeed(-irMotorSpeed);
-        backRightMotor.setMotorSpeed(-irMotorSpeed);
-        backLeftMotor.setMotorSpeed(-irMotorSpeed);
+        car.direct(3*PI/2, irMotorSpeed, 0);
         break;
       case 0x16:
         //Turn Left
-        frontRightMotor.setMotorSpeed(irMotorSpeed);
-        frontLeftMotor.setMotorSpeed(-irMotorSpeed);
-        backRightMotor.setMotorSpeed(irMotorSpeed);
-        backLeftMotor.setMotorSpeed(-irMotorSpeed);
+        car.direct(0,0,irMotorSpeed);
         break;
       case 0x0D:
         //Turn Right
-        frontRightMotor.setMotorSpeed(-irMotorSpeed);
-        frontLeftMotor.setMotorSpeed(irMotorSpeed);
-        backRightMotor.setMotorSpeed(-irMotorSpeed);
-        backLeftMotor.setMotorSpeed(irMotorSpeed);
+        car.direct(0,0,-irMotorSpeed);
         break;
       case 0x08:
         //WEST
-        frontRightMotor.setMotorSpeed(irMotorSpeed);
-        backLeftMotor.setMotorSpeed(irMotorSpeed);
-        frontLeftMotor.setMotorSpeed(-irMotorSpeed);
-        backRightMotor.setMotorSpeed(-irMotorSpeed);
+        car.direct(PI,irMotorSpeed,0);
         break;
       case 0x5A:
         //EAST
-        frontRightMotor.setMotorSpeed(-irMotorSpeed);
-        backLeftMotor.setMotorSpeed(-irMotorSpeed);
-        frontLeftMotor.setMotorSpeed(irMotorSpeed);
-        backRightMotor.setMotorSpeed(irMotorSpeed);
+        car.direct(0,irMotorSpeed,0);
         break;
       case 0x5E:
         //NORTH-EAST
-        frontRightMotor.stopMotor();
-        backLeftMotor.stopMotor();
-        frontLeftMotor.setMotorSpeed(irMotorSpeed);
-        backRightMotor.setMotorSpeed(irMotorSpeed);
+        car.direct(PI/4,irMotorSpeed,0);
         break;
       case 0x0C:
         //NORTH-WEST
-        frontRightMotor.setMotorSpeed(irMotorSpeed);
-        backLeftMotor.setMotorSpeed(irMotorSpeed);
-        frontLeftMotor.stopMotor();
-        backRightMotor.stopMotor();
+        car.direct(3*PI/4,irMotorSpeed,0);
         break;
       case 0x42:
         //SOUTH-WEST
-        frontRightMotor.stopMotor();
-        backLeftMotor.stopMotor();
-        frontLeftMotor.setMotorSpeed(-irMotorSpeed);
-        backRightMotor.setMotorSpeed(-irMotorSpeed);
+        car.direct(5*PI/4,irMotorSpeed,0);
         break;
       case 0x4A:
         //SOUTH-EAST
-        frontRightMotor.setMotorSpeed(-irMotorSpeed);
-        backLeftMotor.setMotorSpeed(-irMotorSpeed);
-        frontLeftMotor.stopMotor();
-        backRightMotor.stopMotor();
+        car.direct(7*PI/4,irMotorSpeed,0);
         break;
-        //TODO: This change of speed is causing something to break in the IR receiver.
       case 0x44:
         irMotorSpeed = 0.3;
         break;
@@ -136,10 +108,7 @@ void loop()
         irMotorSpeed = 1.0;
         break;
       default:
-        frontRightMotor.stopMotor();
-        frontLeftMotor.stopMotor();
-        backRightMotor.stopMotor();
-        backLeftMotor.stopMotor();
+        car.stopAll();
         break;
     }
   }
